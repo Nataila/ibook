@@ -3,27 +3,12 @@
 # @Author: cc
 # @Date  :2019-04-11
 
-import os
 from datetime import datetime
 
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy_utils import ChoiceType
+from werkzeug.security import generate_password_hash, check_password_hash
 
-app = Flask(__name__)
-
-prefix = 'sqlite:////'
-
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-    'DATABASE_URL', prefix + os.path.join(app.root_path, 'ibook.db.sqlite'))
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-db = SQLAlchemy(app)
-
-
-@app.route('/')
-def index():
-    return 'hello'
+from .utils import db
 
 
 # Models
@@ -36,6 +21,12 @@ class User(db.Model):
     password = db.Column(db.String(120), nullable=False)
     bills = db.relationship('Bill')
     created_at = db.Column(db.DateTime, default=datetime.now)
+
+    def set_password(self, password):
+        self.password = generate_password_hash(password)
+
+    def valid_password(self, password):
+        return check_password_hash(self.password, password)
 
 
 class Bill(db.Model):
@@ -52,14 +43,3 @@ class Bill(db.Model):
     tag = db.Column(ChoiceType(TAG_CHOICES, db.Integer()))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'))
     created_at = db.Column(db.DateTime, default=datetime.now)
-
-
-@app.cli.command()
-def initdb():
-    '''init db'''
-    db.create_all()
-    print('initialized database')
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
